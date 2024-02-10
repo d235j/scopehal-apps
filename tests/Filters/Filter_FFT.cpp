@@ -44,7 +44,7 @@
 #include "Filters.h"
 
 //TODO: switch to FFTW since test case is OK to be GPL
-#ifndef _APPLE_SILICON
+#if !defined(_APPLE_SILICON) && !defined(_MSC_VER)
 
 using namespace std;
 

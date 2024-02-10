@@ -8,6 +8,7 @@ if(NOT (CMAKE_SIZEOF_VOID_P EQUAL 8))
 		              "upstream, it will most likely fail and is unsupported.")
 endif()
 
+
 # Check for Vulkan SDK env var and prepend it to CMAKE_PREFIX_PATH if set to prefer Vulkan SDK packages if available
 if(DEFINED ENV{VULKAN_SDK})
 	#WORKAROUND: Vulkan SDK is incompatible with MinGW due to C++ linkage
@@ -34,13 +35,14 @@ set(DISABLE_PCH CACHE BOOL "Disable precompiled headers as this may break certai
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # error if compiler doesn't support c++17
 set(CMAKE_CXX_EXTENSIONS OFF) # use c++17 instead of gnu++17
+set(CMAKE_CONFIGURATION_TYPES "Debug" "Release" "RelWithDebInfo")
 
 # PCH needs to be disabled before targets are created/added/PCH is added to them
 if(DISABLE_PCH)
 	set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 endif()
 
-if(NOT CMAKE_GENERATOR MATCHES "Visual Studio"))
+if(NOT CMAKE_GENERATOR MATCHES "Visual Studio")
 	# Compiler warnings for GCC/Clang
 	if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		add_compile_options(-Wall -Wextra -Wuninitialized)
@@ -143,8 +145,8 @@ if(LINUX)
 	pkg_check_modules(GTK QUIET IMPORTED_TARGET REQUIRED gtk+-3.0)
 endif()
 
-# find ffts, except on Apple Silicon where it's not supported
-if(NOT APPLE_SILICON)
+# find ffts, except on Apple Silicon and MSVCwhere it's not supported
+if((NOT APPLE_SILICON) AND (NOT CMAKE_GENERATOR MATCHES "Visual Studio"))
 	# ffts ships a broken pkgconfig file on some platforms so we are not going to use it
 	find_path(LIBFFTS_INCLUDE_DIRS ffts.h PATH_SUFFIXES ffts REQUIRED)
 	find_library(LIBFFTS_LIBRARIES NAMES ffts libffts REQUIRED)
@@ -163,8 +165,15 @@ endif()
 find_package(glfw3 3.2 REQUIRED)
 
 # Find Vulkan-related packages
-#WORKAROUND glslang does not look for SPIRV-Tools-opt but needs it on macOS, harmless elsewhere
-find_package(SPIRV-Tools-opt REQUIRED)
+#WORKAROUND glslang does not look for SPIRV-Tools-opt but needs it on macOS, harmless elsewhere except MSVC
+if((NOT CMAKE_GENERATOR MATCHES "Visual Studio"))
+	find_package(SPIRV-Tools-opt REQUIRED)
+else()
+	find_library(SPIRV-Tools-opt_LIB SPIRV-Tools-opt.lib REQUIRED)
+	add_library(SPIRV-Tools-opt STATIC IMPORTED)
+	set_property(TARGET SPIRV-Tools-opt PROPERTY IMPORTED_LOCATION ${SPIRV-Tools-opt_LIB})
+	message("SPIRV-Tools-opt_LIB is ${SPIRV-Tools-opt_LIB}")
+endif()
 if(DEFINED VULKAN_SDK_PATH)
 	#WORKAROUND The Vulkan SDK ships incomplete cmake config files.
 	# Work around this, which does require FindVulkan.cmake.

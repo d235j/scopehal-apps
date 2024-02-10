@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "pkgconf",
+    "yaml-cpp",
+    "libsigcpp",
+    "cairomm",
+    "glfw3",
+    "catch2"
+  ]
+}
