@@ -40,28 +40,34 @@ if(DISABLE_PCH)
 	set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 endif()
 
-# Compiler warnings for GCC/Clang
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	add_compile_options(-Wall -Wextra -Wuninitialized)
-	add_compile_options(-Wshadow -Wpedantic -Wcast-align -Wwrite-strings)
-	add_compile_options(-Wmissing-declarations -Wvla)
-  add_compile_options(-Werror -Wno-error=deprecated-declarations -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=unused-result)
+if(NOT CMAKE_GENERATOR MATCHES "Visual Studio"))
+	# Compiler warnings for GCC/Clang
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		add_compile_options(-Wall -Wextra -Wuninitialized)
+		add_compile_options(-Wshadow -Wpedantic -Wcast-align -Wwrite-strings)
+		add_compile_options(-Wmissing-declarations -Wvla)
+	  add_compile_options(-Werror -Wno-error=deprecated-declarations -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=unused-result)
+	endif()
+
+	# Compiler warnings specific to GCC or Clang
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
+		add_compile_options(-Woverloaded-virtual=1)
+	elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	  add_compile_options(-Woverloaded-virtual -Wpointer-sign -Wno-gnu-zero-variadic-macro-arguments -Wno-unknown-warning-option)
+	endif()
+	add_compile_options(-g -mtune=native)
+	add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
+	add_compile_options("$<$<CONFIG:DEBUG>:-O0>")
+
+	# Needed for %zu/%zd on MSYS2, must be added here to avoid redefinition
+	if(WIN32)
+	    add_compile_definitions(__USE_MINGW_ANSI_STDIO=1)
+	endif()
+else()
+	add_compile_options(/Wall /WX)
 endif()
 
-# Compiler warnings specific to GCC or Clang
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
-	add_compile_options(-Woverloaded-virtual=1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Woverloaded-virtual -Wpointer-sign -Wno-gnu-zero-variadic-macro-arguments -Wno-unknown-warning-option)
-endif()
-add_compile_options(-g -mtune=native)
-add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
-add_compile_options("$<$<CONFIG:DEBUG>:-O0;-D_DEBUG>")
-
-# Needed for %zu/%zd on MSYS2, must be added here to avoid redefinition
-if(WIN32 AND (NOT MSVC))
-    add_compile_definitions(__USE_MINGW_ANSI_STDIO=1)
-endif()
+add_compile_definitions("$<$<CONFIG:DEBUG>:_DEBUG>")
 
 # Default build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -69,17 +75,22 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(SANITIZE)
-	add_compile_options(-fsanitize=address -fsanitize=undefined)
-	add_link_options(-fsanitize=address -fsanitize=undefined)
+	if(NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+		add_compile_options(-fsanitize=address -fsanitize=undefined)
+		add_link_options(-fsanitize=address -fsanitize=undefined)
+	else()
+		add_compile_options(/fsanitize=address)
+		add_link_options(/fsanitize=address)
+	endif()
 endif()
 
 if(WIN32)
-	add_compile_options(-D_USE_MATH_DEFINES -D_POSIX_THREAD_SAFE_FUNCTIONS)
+	add_compile_definitions(_USE_MATH_DEFINES _POSIX_THREAD_SAFE_FUNCTIONS)
 endif()
 
 # Detect Apple Silicon as FFTS is not available for it
 if(APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
-	add_compile_options(-D_APPLE_SILICON)
+	add_compile_definitions(_APPLE_SILICON)
 	set(APPLE_SILICON TRUE)
 endif()
 
@@ -253,7 +264,7 @@ if(BUILD_TESTING)
 	# Must include catch2/catch_all.hpp instead of catch2/catch.hpp
 	# So we set a compile flag to let the code know.
 	if(NOT Catch2_VERSION MATCHES "^[0-2]\\.")
-		add_compile_options(-D_CATCH2_V3)
+		add_compile_definitions(_CATCH2_V3)
 	endif()
 	add_subdirectory("${PROJECT_SOURCE_DIR}/tests")
 endif()
