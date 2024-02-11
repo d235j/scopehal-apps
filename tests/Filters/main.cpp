@@ -65,7 +65,7 @@ public:
 		ScopeProtocolStaticInit();
 
 		//Add search path
-		g_searchPaths.push_back(GetDirOfCurrentExecutable() + "/../../src/ngscopeclient/");
+		g_searchPaths.push_back(filesystem::path(GetDirOfCurrentExecutable()) / "/../../src/ngscopeclient/");
 
 		//Initialize the RNG
 		g_rng.seed(0);
