@@ -40,7 +40,15 @@
 #include <vector>
 
 #include "Preference.h"
-#include "yaml-cpp/yaml.h"
+
+#ifdef _WIN32
+//WORKAROUND Silence annoying message pragma in the yaml headers on Windows
+#define message(ignore)
+#endif
+#include <yaml-cpp/yaml.h>
+#ifdef _WIN32
+#undef message
+#endif
 
 enum class PreferenceTreeNodeType
 {
